@@ -1,0 +1,144 @@
+<style>
+  #quiz-app { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 800px; margin: 0 auto; background: #fff; padding: 15px; border-radius: 12px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; position: sticky; top: 0; background: #fff; padding: 10px 0; z-index: 10; border-bottom: 1px solid #eee; }
+  .btn { padding: 10px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px; transition: 0.2s; display: flex; align-items: center; gap: 5px; }
+  .btn-primary { background: #1565c0; color: white; }
+  .btn-secondary { background: #f5f5f5; color: #333; border: 1px solid #ddd; }
+  .btn:active { transform: scale(0.98); }
+
+  .quiz-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; padding: 0; list-style: none; }
+  .quiz-card { 
+    background: #fdfdfd; border: 1px solid #eee; border-radius: 10px; padding: 12px; 
+    display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: 0.2s;
+  }
+  .quiz-card:hover { border-color: #bbdefb; background: #f9fcff; }
+  .quiz-card.marked { border: 2px solid #ff5252 !important; background: #fff5f5 !important; }
+
+  .side-left { display: flex; align-items: center; gap: 10px; flex: 1; }
+  .voice-trigger { background: #eee; border: none; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; transition: 0.2s; flex-shrink: 0; }
+  .voice-trigger:hover { background: #1565c0; color: white; }
+
+  .question-text { font-weight: bold; font-size: 0.85rem; color: #333; line-height: 1.3; }
+  .answer-box { 
+    width: 140px; height: 36px; background: #444; border-radius: 6px; 
+    display: flex; align-items: center; justify-content: center; 
+    color: #444; font-size: 0.8rem; font-weight: bold; cursor: pointer; 
+    transition: 0.3s; flex-shrink: 0; margin-left: 10px; padding: 0 5px; text-align: center;
+  }
+  .answer-box:hover, .answer-box.revealed { background: #e3f2fd; color: #1565c0; }
+
+  @media (max-width: 480px) {
+    .quiz-grid { grid-template-columns: 1fr; }
+    .answer-box { width: 110px; font-size: 0.75rem; }
+  }
+</style>
+
+<div id="quiz-app">
+  <div class="controls">
+    <button class="btn btn-primary" onclick="shuffleCards()">🔀 シャッフル</button>
+    <button id="mode-btn" class="btn btn-secondary" onclick="toggleMode()">🔄 英 → 日 モード</button>
+    <button class="btn btn-secondary" onclick="resetMarkers()" style="font-size:12px;">クリア</button>
+  </div>
+  <ul id="quiz-list" class="quiz-grid"></ul>
+</div>
+
+<script>
+(function() {
+  const words = [
+    {en: "brain / encephalon", jp: "脳", s: "brain"},
+    {en: "cerebrum", jp: "大脳", s: "cerebrum"},
+    {en: "cerebellum", jp: "小脳", s: "cerebellum"},
+    {en: "brainstem", jp: "脳幹", s: "brainstem"},
+    {en: "midbrain / mesencephalon", jp: "中脳", s: "midbrain"},
+    {en: "pons", jp: "キョウ / 橋", s: "pons"},
+    {en: "medulla oblongata", jp: "延髄", s: "medulla oblongata"},
+    {en: "diencephalon", jp: "間脳", s: "diencephalon"},
+    {en: "thalamus", jp: "視床", s: "thalamus"},
+    {en: "hypothalamus", jp: "視床下部", s: "hypothalamus"},
+    {en: "pineal gland", jp: "松果体", s: "pineal gland"},
+    {en: "pituitary [gland]", jp: "下垂体", s: "pituitary gland"},
+    {en: "hippocampus", jp: "海馬", s: "hippocampus"},
+    {en: "spinal cord", jp: "脊髄", s: "spinal cord"},
+    {en: "meninx (pl. meninges)", jp: "髄膜", s: "meninges"},
+    {en: "eyeball", jp: "眼球", s: "eyeball"},
+    {en: "conjunctiva", jp: "結膜", s: "conjunctiva"},
+    {en: "cornea", jp: "角膜", s: "cornea"},
+    {en: "iris", jp: "虹彩", s: "iris"},
+    {en: "crystalline lens", jp: "水晶体", s: "crystalline lens"},
+    {en: "retina", jp: "網膜", s: "retina"},
+    {en: "vitreous body", jp: "硝子体", s: "vitreous body"},
+    {en: "uvea", jp: "ブドウ膜", s: "uvea"},
+    {en: "sclera", jp: "強膜", s: "sclera"},
+    {en: "auricle", jp: "耳介", s: "auricle"},
+    {en: "external ear", jp: "外耳", s: "external ear"},
+    {en: "middle ear", jp: "中耳", s: "middle ear"},
+    {en: "internal ear", jp: "内耳", s: "internal ear"},
+    {en: "external auditory canal", jp: "外耳道", s: "external auditory canal"},
+    {en: "eardrum / tympanic membrane", jp: "鼓膜", s: "eardrum"},
+    {en: "Eustachian tube", jp: "耳管", s: "Eustachian tube"},
+    {en: "cochlea", jp: "カギュウ / 蝸牛", s: "cochlea"},
+    {en: "semicircular canals", jp: "三半規管", s: "semicircular canals"},
+    {en: "heart", jp: "心臓", s: "heart"},
+    {en: "left atrium", jp: "左心房", s: "left atrium"},
+    {en: "left ventricle", jp: "左心室", s: "left ventricle"},
+    {en: "right atrium", jp: "右心房", s: "right atrium"},
+    {en: "right ventricle", jp: "右心室", s: "right ventricle"},
+    {en: "tricuspid valve", jp: "サンセンベン / 三尖弁", s: "tricuspid valve"},
+    {en: "mitral valve", jp: "僧帽弁", s: "mitral valve"},
+    {en: "aortic valve", jp: "大動脈弁", s: "aortic valve"},
+    {en: "aortic arch", jp: "大動脈弓", s: "aortic arch"},
+    {en: "aorta", jp: "大動脈", s: "aorta"},
+    {en: "pulmonary artery", jp: "肺動脈", s: "pulmonary artery"},
+    {en: "pulmonary vein", jp: "肺静脈", s: "pulmonary vein"},
+    {en: "coronary artery", jp: "冠[状]動脈", s: "coronary artery"},
+    {en: "superior vena cava", jp: "上大静脈", s: "superior vena cava"},
+    {en: "inferior vena cava", jp: "下大静脈", s: "inferior vena cava"}
+  ];
+
+  let isEnToJp = true;
+  let currentList = [...words];
+
+  window.shuffleCards = function() {
+    currentList.sort(() => Math.random() - 0.5);
+    render();
+  };
+
+  window.toggleMode = function() {
+    isEnToJp = !isEnToJp;
+    document.getElementById('mode-btn').innerText = isEnToJp ? "🔄 英 → 日 モード" : "🔄 日 → 英 モード";
+    render();
+  };
+
+  window.resetMarkers = function() {
+    document.querySelectorAll('.quiz-card').forEach(el => el.classList.remove('marked'));
+  };
+
+  window.play = function(s) {
+    if(!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(s);
+    u.lang = 'en-US';
+    u.rate = 0.8;
+    window.speechSynthesis.speak(u);
+  };
+
+  function render() {
+    const container = document.getElementById('quiz-list');
+    container.innerHTML = currentList.map(item => {
+      const q = isEnToJp ? item.en : item.jp;
+      const a = isEnToJp ? item.jp : item.en;
+      return `
+        <li class="quiz-card" onclick="this.classList.toggle('marked')">
+          <div class="side-left">
+            <button class="voice-trigger" onclick="event.stopPropagation(); play('${item.s}')">🔊</button>
+            <span class="question-text">${q}</span>
+          </div>
+          <div class="answer-box" onclick="event.stopPropagation(); this.classList.toggle('revealed')">${a}</div>
+        </li>
+      `;
+    }).join('');
+  }
+
+  render();
+})();
+</script>
