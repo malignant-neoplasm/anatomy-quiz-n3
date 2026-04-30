@@ -2,75 +2,97 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Anatomy Quiz</title>
+<title>Anatomy Quiz (Organs)</title>
 
 <style>
 body {
   font-family: sans-serif;
-  background: #f7f7f7;
   margin: 0;
-  padding: 10px;
+  background: #f7f7f7;
 }
 
+/* ===== 上部コントロール ===== */
 .controls {
+  position: sticky;
+  top: 0;
+  background: #ffffff;
+  padding: 10px;
   display: flex;
   gap: 10px;
-  margin-bottom: 10px;
+  justify-content: center;
+  border-bottom: 1px solid #ddd;
+  z-index: 10;
 }
 
 button {
   padding: 8px 12px;
   border: none;
   border-radius: 6px;
-  background: #d32f2f;
+  background: #1976d2;
   color: white;
   cursor: pointer;
+  font-size: 0.85em;
+}
+button:hover {
+  background: #1565c0;
 }
 
-.container {
+/* ===== クイズ本体 ===== */
+.quiz {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  padding: 10px;
 }
 
-.card {
+.item {
   width: calc(50% - 5px);
-  background: white;
-  padding: 10px;
+  background: #fffafa;
+  border: 1px solid #eee;
   border-radius: 8px;
+  padding: 10px;
+
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.word {
+/* 問題文 */
+.q {
   font-weight: bold;
-  font-size: 0.9em;
+  font-size: 0.85em;
+  flex: 1;
 }
 
-.mask {
+/* 黒枠（ここが超重要） */
+.a {
+  width: 220px;              /* ←固定で揃える */
+  text-align: center;
   background: #444;
   color: #444;
-  padding: 5px 10px;
-  border-radius: 5px;
+  border-radius: 4px;
+  padding: 6px 0;
   cursor: pointer;
-  min-width: 120px;
-  text-align: center;
+  transition: 0.2s;
+  font-size: 0.8em;
+  margin-left: 10px;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
-.mask.show {
+.a.show {
   background: #fff9c4;
   color: #d32f2f;
 }
 
-.speak {
-  margin-left: 5px;
-  cursor: pointer;
-}
-
-@media (max-width: 650px) {
-  .card { width: 100%; }
+/* スマホ */
+@media (max-width: 600px) {
+  .item {
+    width: 100%;
+  }
+  .a {
+    width: 180px;
+  }
 }
 </style>
 </head>
@@ -80,14 +102,15 @@ button {
 <div class="controls">
   <button onclick="toggleMode()">日⇄英 切替</button>
   <button onclick="shuffle()">シャッフル</button>
+  <button onclick="speakAll()">読み上げ</button>
 </div>
 
-<div class="container" id="container"></div>
+<div id="quiz" class="quiz"></div>
 
 <script>
 let mode = "enToJp";
 
-let data = [
+const data = [
 ["brain / encephalon","脳"],
 ["cerebrum","大脳"],
 ["cerebellum","小脳"],
@@ -143,41 +166,32 @@ let data = [
 ];
 
 function render() {
-  const container = document.getElementById("container");
-  container.innerHTML = "";
+  const quiz = document.getElementById("quiz");
+  quiz.innerHTML = "";
 
-  data.forEach(([en, jp]) => {
-    let q = mode === "enToJp" ? en : jp;
-    let a = mode === "enToJp" ? jp : en;
+  data.forEach(d => {
+    const item = document.createElement("div");
+    item.className = "item";
 
-    const card = document.createElement("div");
-    card.className = "card";
+    const q = document.createElement("div");
+    q.className = "q";
 
-    const word = document.createElement("div");
-    word.className = "word";
-    word.innerText = q;
+    const a = document.createElement("div");
+    a.className = "a";
 
-    const mask = document.createElement("div");
-    mask.className = "mask";
-    mask.innerText = a;
+    if (mode === "enToJp") {
+      q.textContent = d[0];
+      a.textContent = d[1];
+    } else {
+      q.textContent = d[1];
+      a.textContent = d[0];
+    }
 
-    mask.onclick = () => {
-      mask.classList.toggle("show");
-    };
+    a.onclick = () => a.classList.toggle("show");
 
-    const speak = document.createElement("span");
-    speak.className = "speak";
-    speak.innerText = "🔊";
-    speak.onclick = () => speakWord(q);
-
-    const right = document.createElement("div");
-    right.appendChild(mask);
-    right.appendChild(speak);
-
-    card.appendChild(word);
-    card.appendChild(right);
-
-    container.appendChild(card);
+    item.appendChild(q);
+    item.appendChild(a);
+    quiz.appendChild(item);
   });
 }
 
@@ -191,10 +205,13 @@ function shuffle() {
   render();
 }
 
-function speakWord(text) {
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.lang = "en-US";
-  speechSynthesis.speak(utter);
+function speakAll() {
+  data.forEach(d => {
+    const text = mode === "enToJp" ? d[0] : d[1];
+    const uttr = new SpeechSynthesisUtterance(text);
+    uttr.lang = mode === "enToJp" ? "en-US" : "ja-JP";
+    speechSynthesis.speak(uttr);
+  });
 }
 
 render();
