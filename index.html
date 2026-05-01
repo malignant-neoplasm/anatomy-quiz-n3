@@ -5,230 +5,257 @@
 <title>Anatomy Quiz</title>
 
 <style>
-body {
-  font-family: sans-serif;
-  margin: 0;
-  background: #f7f7f7;
+/* ===== 全体 ===== */
+#quiz {
+  max-width: 600px;
+  margin: 0 auto;
 }
 
-/* ===== 上部UI ===== */
-.controls {
-  position: sticky;
-  top: 0;
-  background: #fff;
-  padding: 10px;
+/* ===== リスト（1列固定） ===== */
+.list {
   display: flex;
-  gap: 10px;
-  justify-content: center;
-  border-bottom: 1px solid #ddd;
-  z-index: 10;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0;
+  list-style: none;
 }
 
-button {
-  padding: 8px 12px;
-  border: none;
-  border-radius: 6px;
-  background: #1976d2;
-  color: white;
-  cursor: pointer;
-  font-size: 0.85em;
-}
-button:hover {
-  background: #1565c0;
-}
-
-/* ===== クイズ ===== */
-.quiz {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  padding: 10px;
-}
-
+/* ===== カード ===== */
 .item {
-  width: calc(50% - 5px);
-  background: #fffafa;
-  border: 1px solid #eee;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  padding: 14px;
+  border-radius: 14px;
+  background: #fff;
+
+  box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+}
+
+/* ===== 問題 ===== */
+.q {
+  flex: 1;
+  font-weight: 600;
+  font-size: 0.95em;
+}
+
+/* ===== 答え ===== */
+.a {
+  min-width: 110px;
+  max-width: 40%;
+  height: 32px;
+
+  background: #444;
+  color: #444;
   border-radius: 8px;
-  padding: 10px;
 
   display: flex;
   align-items: center;
-}
+  justify-content: center;
 
-/* 問題 */
-.q {
-  flex: 1;
-  font-weight: bold;
   font-size: 0.85em;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* 黒枠 */
+/* 表示 */
+.a.show {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+/* PCホバー */
+.a:hover {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+/* 音声ボタン */
+.speak-btn {
+  background: #eef2f7;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 8px;
+}
 .a {
-  width: 220px;
-  text-align: center;
+  width: 140px;        /* ← 固定 */
+  min-width: 140px;
+  max-width: 140px;
+
+  height: 34px;
+
   background: #444;
   color: #444;
-  border-radius: 4px;
-  padding: 6px 0;
-  cursor: pointer;
-  margin: 0 8px;
-  transition: 0.2s;
-  white-space: nowrap;
-  overflow: hidden;
-}
-.a.show {
-  background: #fff9c4;
-  color: #d32f2f;
-}
+  border-radius: 8px;
 
-/* 読み上げボタン */
-.speak-btn {
-  background: #4caf50;
-  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
   font-size: 0.8em;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;      /* ← これ超重要 */
 }
-.speak-btn:hover {
-  background: #388e3c;
+.controls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 15px;
 }
 
-@media (max-width: 600px) {
-  .item { width: 100%; }
-  .a { width: 180px; }
+.btn {
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: none !important;
+
+  background: #1976d2 !important;
+  color: #fff !important;
+
+  font-weight: bold;
+  font-size: 0.9em;
+
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  cursor: pointer;
+}
+
+.btn:nth-child(2) {
+  background: #43a047 !important; /* シャッフル */
+}
+
+.btn:nth-child(3) {
+  background: #757575 !important; /* 標準順 */
 }
 </style>
 </head>
 
 <body>
 
-<div class="controls">
-  <button onclick="toggleMode()">日⇄英 切替</button>
-  <button onclick="shuffle()">シャッフル</button>
-  <button onclick="resetOrder()">リセット</button>
+<div id="quiz">
+  <div class="controls">
+    <button class="btn" onclick="toggleMode()">🔁 英→日</button>
+    <button class="btn" onclick="render(true)">🔀 シャッフル</button>
+    <button class="btn" onclick="render(false)" style="background:#666;">標準順</button>
+  </div>
+
+  <ul id="list" class="list"></ul>
 </div>
 
-<div id="quiz" class="quiz"></div>
-
 <script>
-let mode = "enToJp";
 
-const originalData = [
-["brain / encephalon","脳"],
-["cerebrum","大脳"],
-["cerebellum","小脳"],
-["brainstem","脳幹"],
-["midbrain / mesencephalon","中脳"],
-["pons","橋"],
-["medulla oblongata","延髄"],
-["diencephalon","間脳"],
-["thalamus","視床"],
-["hypothalamus","視床下部"],
-["pineal gland","松果体"],
-["pituitary gland","下垂体"],
-["hippocampus","海馬"],
-["spinal cord","脊髄"],
-["meninx (pl. meninges)","髄膜"],
+let isEnglishMode = true;
 
-["eyeball","眼球"],
-["conjunctiva","結膜"],
-["cornea","角膜"],
-["iris","虹彩"],
-["crystalline lens","水晶体"],
-["retina","網膜"],
-["vitreous body","硝子体"],
-["uvea","ぶどう膜"],
-["sclera","強膜"],
+const words = [
+{en:"brain / encephalon", jp:"脳"},
+{en:"cerebrum", jp:"大脳"},
+{en:"cerebellum", jp:"小脳"},
+{en:"brainstem", jp:"脳幹"},
+{en:"midbrain / mesencephalon", jp:"中脳"},
+{en:"pons", jp:"橋"},
+{en:"medulla oblongata", jp:"延髄"},
+{en:"diencephalon", jp:"間脳"},
+{en:"thalamus", jp:"視床"},
+{en:"hypothalamus", jp:"視床下部"},
+{en:"pineal gland", jp:"松果体"},
+{en:"pituitary gland", jp:"下垂体"},
+{en:"hippocampus", jp:"海馬"},
+{en:"spinal cord", jp:"脊髄"},
+{en:"meninx (pl. meninges)", jp:"髄膜"},
 
-["auricle","耳介"],
-["external ear","外耳"],
-["middle ear","中耳"],
-["internal ear","内耳"],
-["external auditory canal","外耳道"],
-["eardrum / tympanic membrane","鼓膜"],
-["Eustachian tube","耳管"],
+{en:"eyeball", jp:"眼球"},
+{en:"conjunctiva", jp:"結膜"},
+{en:"cornea", jp:"角膜"},
+{en:"iris", jp:"虹彩"},
+{en:"crystalline lens", jp:"水晶体"},
+{en:"retina", jp:"網膜"},
+{en:"vitreous body", jp:"硝子体"},
+{en:"uvea", jp:"ぶどう膜"},
+{en:"sclera", jp:"強膜"},
 
-["cochlea","蝸牛"],
-["semicircular canals","半規管"],
+{en:"auricle", jp:"耳介"},
+{en:"external ear", jp:"外耳"},
+{en:"middle ear", jp:"中耳"},
+{en:"internal ear", jp:"内耳"},
+{en:"external auditory canal", jp:"外耳道"},
+{en:"eardrum / tympanic membrane", jp:"鼓膜"},
+{en:"Eustachian tube", jp:"耳管"},
 
-["heart","心臓"],
-["left atrium","左心房"],
-["left ventricle","左心室"],
-["right atrium","右心房"],
-["right ventricle","右心室"],
-["tricuspid valve","三尖弁"],
-["mitral valve","僧帽弁"],
-["aortic valve","大動脈弁"],
-["aortic arch","大動脈弓"],
-["aorta","大動脈"],
-["pulmonary artery","肺動脈"],
-["pulmonary vein","肺静脈"],
-["coronary artery","冠動脈"],
-["superior vena cava","上大静脈"],
-["inferior vena cava","下大静脈"]
+{en:"cochlea", jp:"蝸牛"},
+{en:"semicircular canals", jp:"半規管"},
+
+{en:"heart", jp:"心臓"},
+{en:"left atrium", jp:"左心房"},
+{en:"left ventricle", jp:"左心室"},
+{en:"right atrium", jp:"右心房"},
+{en:"right ventricle", jp:"右心室"},
+{en:"tricuspid valve", jp:"三尖弁"},
+{en:"mitral valve", jp:"僧帽弁"},
+{en:"aortic valve", jp:"大動脈弁"},
+{en:"aortic arch", jp:"大動脈弓"},
+{en:"aorta", jp:"大動脈"},
+{en:"pulmonary artery", jp:"肺動脈"},
+{en:"pulmonary vein", jp:"肺静脈"},
+{en:"coronary artery", jp:"冠動脈"},
+{en:"superior vena cava", jp:"上大静脈"},
+{en:"inferior vena cava", jp:"下大静脈"},
 ];
 
-let data = [...originalData];
+// シャッフル
+function shuffle(arr){
+  for(let i = arr.length-1; i>0; i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
 
-function render() {
-  const quiz = document.getElementById("quiz");
-  quiz.innerHTML = "";
+// 音声
+function speak(text){
+  if(!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "en-US";
+  u.rate = 0.85;
+  speechSynthesis.speak(u);
+}
 
-  data.forEach(d => {
-    const item = document.createElement("div");
-    item.className = "item";
+// 切替
+function toggleMode(){
+  isEnglishMode = !isEnglishMode;
+  document.querySelector(".controls .btn").textContent =
+    isEnglishMode ? "🔁 英→日" : "🔁 日→英";
+  render(false);
+}
 
-    const q = document.createElement("div");
-    q.className = "q";
+// 描画
+function render(doShuffle){
+  let list = [...words];
+  if(doShuffle) list = shuffle(list);
 
-    const a = document.createElement("div");
-    a.className = "a";
+  let html = "";
 
-    const speakBtn = document.createElement("button");
-    speakBtn.className = "speak-btn";
-    speakBtn.textContent = "🔊";
+  list.forEach(w=>{
+    const q = isEnglishMode ? w.en : w.jp;
+    const a = isEnglishMode ? w.jp : w.en;
 
-    if (mode === "enToJp") {
-      q.textContent = d[0];
-      a.textContent = d[1];
-      speakBtn.onclick = () => speak(d[0], "en-US");
-    } else {
-      q.textContent = d[1];
-      a.textContent = d[0];
-      speakBtn.onclick = () => speak(d[1], "ja-JP");
-    }
-
-    a.onclick = () => a.classList.toggle("show");
-
-    item.appendChild(q);
-    item.appendChild(a);
-    item.appendChild(speakBtn);
-
-    quiz.appendChild(item);
+    html += `
+      <li class="item" onclick="this.classList.toggle('marked')">
+        <button class="speak-btn" onclick="event.stopPropagation(); speak('${w.en}')">🔊</button>
+        <span class="q">${q}</span>
+        <span class="a">${a}</span>
+      </li>
+    `;
   });
+
+  document.getElementById("list").innerHTML = html;
 }
 
-function toggleMode() {
-  mode = mode === "enToJp" ? "jpToEn" : "enToJp";
-  render();
-}
+render(false);
 
-function shuffle() {
-  data.sort(() => Math.random() - 0.5);
-  render();
-}
-
-function resetOrder() {
-  data = [...originalData];
-  render();
-}
-
-function speak(text, lang) {
-  const uttr = new SpeechSynthesisUtterance(text);
-  uttr.lang = lang;
-  speechSynthesis.speak(uttr);
-}
-
-render();
 </script>
 
 </body>
